@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#14112a">
+    <title>응원 메시지</title>
+    <style>
+        :root {
+            --bg: #14112a;
+            --panel: #1f1a3d;
+            --line: #3a3366;
+            --text: #ffffff;
+            --sub: #b9b3e0;
+            --accent: #ffcc33;
+            --accent-text: #14112a;
+            --error: #ff7a8a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .screen {
+            position: fixed;
+            inset: 0;
+            display: none;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* ---------- 입력 화면 ---------- */
+        #input-screen {
+            flex-direction: column;
+            padding: max(12px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+            gap: 10px;
+        }
+
+        .head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .head h1 {
+            margin: 0;
+            font-size: clamp(18px, 4.5vh, 26px);
+        }
+
+        .head p {
+            margin: 0;
+            font-size: clamp(12px, 3.2vh, 15px);
+            color: var(--sub);
+        }
+
+        form {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            min-height: 0;
+        }
+
+        .field {
+            position: relative;
+            display: flex;
+        }
+
+        .field span {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--line);
+            color: var(--sub);
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .field input {
+            width: 100%;
+            height: 100%;
+            min-height: 44px;
+            padding: 0 12px 0 48px;
+            border: 2px solid var(--line);
+            border-radius: 12px;
+            background: var(--panel);
+            color: var(--text);
+            font-size: 16px;
+            /* 16px 미만이면 iOS가 확대함 */
+            outline: none;
+        }
+
+        .field input::placeholder {
+            color: #7d76ad;
+        }
+
+        .field input:focus {
+            border-color: var(--accent);
+        }
+
+        .field input.empty {
+            border-color: var(--error);
+        }
+
+        .field input:not(:placeholder-shown)+span,
+        .field input:not(:placeholder-shown)~span {
+            background: var(--accent);
+            color: var(--accent-text);
+        }
+
+        #send {
+            border: 0;
+            border-radius: 12px;
+            background: var(--accent);
+            color: var(--accent-text);
+            font-size: 20px;
+            font-weight: 800;
+            min-height: 44px;
+            cursor: pointer;
+        }
+
+        #send:active {
+            transform: scale(0.98);
+        }
+
+        #error {
+            min-height: 1.2em;
+            margin: 0;
+            font-size: 13px;
+            color: var(--error);
+        }
+
+        /* ---------- 흐르는 화면 ---------- */
+        #flow-screen {
+            flex-direction: column;
+            justify-content: space-evenly;
+            background: radial-gradient(ellipse at center, #2a2260 0%, var(--bg) 70%);
+        }
+
+        .lane {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .msg {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            white-space: nowrap;
+            font-weight: 800;
+            font-size: clamp(22px, 9vh, 56px);
+            line-height: 1;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+            will-change: transform;
+            animation-name: flow;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+
+        @keyframes flow {
+            from {
+                transform: translate(var(--from), -50%);
+            }
+
+            to {
+                transform: translate(var(--to), -50%);
+            }
+        }
+
+        #back {
+            position: absolute;
+            right: max(12px, env(safe-area-inset-right));
+            bottom: max(10px, env(safe-area-inset-bottom));
+            padding: 8px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(20, 17, 42, 0.7);
+            color: var(--sub);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* ---------- 세로 방향 안내 ---------- */
+        #rotate {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: var(--bg);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            text-align: center;
+            padding: 24px;
+        }
+
+        #rotate .icon {
+            width: 48px;
+            height: 80px;
+            border: 4px solid var(--accent);
+            border-radius: 10px;
+            animation: turn 1.8s ease-in-out infinite;
+        }
+
+        @keyframes turn {
+
+            0%,
+            20% {
+                transform: rotate(0);
+            }
+
+            60%,
+            100% {
+                transform: rotate(-90deg);
+            }
+        }
+
+        @media (orientation: portrait) and (max-width: 820px) {
+            #rotate {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="rotate">
+        <div class="icon"></div>
+        <p>휴대폰을 가로로 돌려 주세요</p>
+    </div>
+
+    <section id="input-screen" class="screen active">
+        <div class="head">
+            <h1>응원 메시지 보내기</h1>
+            <p>5개를 모두 적고 보내기를 눌러 주세요</p>
+        </div>
+        <form id="form" novalidate autocomplete="off">
+            <label class="field"><input type="text" maxlength="30" placeholder="첫 번째 응원 메시지"><span>1</span></label>
+            <label class="field"><input type="text" maxlength="30" placeholder="두 번째 응원 메시지"><span>2</span></label>
+            <label class="field"><input type="text" maxlength="30" placeholder="세 번째 응원 메시지"><span>3</span></label>
+            <label class="field"><input type="text" maxlength="30" placeholder="네 번째 응원 메시지"><span>4</span></label>
+            <label class="field"><input type="text" maxlength="30" placeholder="다섯 번째 응원 메시지"><span>5</span></label>
+            <button id="send" type="submit">보내기</button>
+        </form>
+        <p id="error" role="alert"></p>
+    </section>
+
+    <section id="flow-screen" class="screen">
+        <button id="back" type="button">다시 쓰기</button>
+    </section>
+
+    <script>
+        const form = document.getElementById('form');
+        const inputs = [...form.querySelectorAll('input')];
+        const error = document.getElementById('error');
+        const inputScreen = document.getElementById('input-screen');
+        const flowScreen = document.getElementById('flow-screen');
+        const back = document.getElementById('back');
+
+        const COLORS = ['#ffcc33', '#7ee8fa', '#ff8fb1', '#b7f08a', '#c9a7ff'];
+        const SPEED = 140; // 초당 이동 px
+
+        // Enter 키로 다음 칸 이동
+        inputs.forEach((input, i) => {
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && i < inputs.length - 1) {
+                    e.preventDefault();
+                    inputs[i + 1].focus();
+                }
+            });
+            input.addEventListener('input', () => input.classList.remove('empty'));
+        });
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const messages = inputs.map(input => input.value.trim());
+            const emptyIndex = messages.findIndex(m => !m);
+            inputs.forEach((input, i) => input.classList.toggle('empty', !messages[i]));
+            if (emptyIndex !== -1) {
+                error.textContent = `${emptyIndex + 1}번 칸이 비어 있습니다. 5개를 모두 입력해 주세요.`;
+                inputs[emptyIndex].focus();
+                return;
+            }
+            error.textContent = '';
+            document.activeElement.blur();
+            showFlow(messages);
+        });
+
+        back.addEventListener('click', () => {
+            flowScreen.querySelectorAll('.lane').forEach(l => l.remove());
+            flowScreen.classList.remove('active');
+            inputScreen.classList.add('active');
+        });
+
+        function showFlow(messages) {
+            flowScreen.querySelectorAll('.lane').forEach(l => l.remove());
+            inputScreen.classList.remove('active');
+            flowScreen.classList.add('active');
+
+            const width = flowScreen.clientWidth;
+            messages.forEach((text, i) => {
+                const lane = document.createElement('div');
+                lane.className = 'lane';
+                const msg = document.createElement('div');
+                msg.className = 'msg';
+                msg.textContent = text;
+                msg.style.color = COLORS[i];
+                lane.appendChild(msg);
+                flowScreen.insertBefore(lane, back);
+
+                // 화면 오른쪽 밖 → 왼쪽 밖으로 이동, 줄마다 속도와 시작 시점을 다르게
+                const distance = width + msg.offsetWidth;
+                const speed = SPEED * (0.8 + (i % 3) * 0.2);
+                const duration = distance / speed;
+                msg.style.setProperty('--from', `${width}px`);
+                msg.style.setProperty('--to', `${-msg.offsetWidth}px`);
+                msg.style.animationDuration = `${duration}s`;
+                msg.style.animationDelay = `${-duration * ((i * 0.37) % 1)}s`;
+            });
+        }
+
+        // 화면 크기가 바뀌면(회전 등) 흐름 다시 계산
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            if (!flowScreen.classList.contains('active')) return;
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                showFlow([...flowScreen.querySelectorAll('.msg')].map(m => m.textContent));
+            }, 200);
+        });
+    </script>
+</body>
+
+</html>
