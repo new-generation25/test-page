@@ -156,39 +156,143 @@
 
         /* ---------- 흐르는 화면 ---------- */
         #flow-screen {
-            flex-direction: column;
-            justify-content: space-evenly;
-            background: radial-gradient(ellipse at center, #2a2260 0%, var(--bg) 70%);
-        }
-
-        .lane {
-            position: relative;
-            flex: 1;
+            align-items: center;
             overflow: hidden;
+            background: #07051a;
+            animation: bgpulse 6s ease-in-out infinite;
         }
 
-        .msg {
+        @keyframes bgpulse {
+
+            0%,
+            100% {
+                background: radial-gradient(ellipse at 30% 50%, #3a1a6e 0%, #07051a 65%);
+            }
+
+            50% {
+                background: radial-gradient(ellipse at 70% 50%, #0f3a6e 0%, #07051a 65%);
+            }
+        }
+
+        #fx {
             position: absolute;
-            top: 50%;
-            left: 0;
-            white-space: nowrap;
-            font-weight: 800;
-            font-size: clamp(22px, 9vh, 56px);
-            line-height: 1;
-            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-            will-change: transform;
-            animation-name: flow;
-            animation-timing-function: linear;
-            animation-iteration-count: infinite;
+            inset: 0;
+            width: 100%;
+            height: 100%;
         }
 
-        @keyframes flow {
+        /* 회전하는 빛줄기 */
+        .beams {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 250vmax;
+            height: 250vmax;
+            margin: -125vmax 0 0 -125vmax;
+            background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.07) 0deg 6deg, transparent 6deg 20deg);
+            animation: spin 24s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .track {
+            position: relative;
+            width: max-content;
+            flex-shrink: 0;
+            display: flex;
+            white-space: nowrap;
+            will-change: transform;
+            animation: marquee var(--dur) linear infinite;
+        }
+
+        @keyframes marquee {
             from {
-                transform: translate(var(--from), -50%);
+                transform: translateX(0);
             }
 
             to {
-                transform: translate(var(--to), -50%);
+                transform: translateX(-50%);
+            }
+        }
+
+        .unit {
+            display: flex;
+            flex-shrink: 0;
+        }
+
+        .ch {
+            display: inline-block;
+            font-weight: 900;
+            font-size: 64vh;
+            line-height: 1.2;
+            text-shadow: 0 0 0.04em #fff, 0 0 0.12em currentColor, 0 0 0.3em currentColor;
+            animation: hue 3s linear infinite, wave 1.6s ease-in-out infinite;
+            animation-delay: var(--d), var(--d);
+        }
+
+        .ch.sp {
+            width: 0.35em;
+        }
+
+        .ch.star {
+            color: #fff5b0;
+            font-size: 40vh;
+            padding: 0 0.3em;
+            animation: twinkle 1.2s ease-in-out infinite, wave 1.6s ease-in-out infinite;
+        }
+
+        @keyframes hue {
+            0% { color: #ff4d6d; }
+            17% { color: #ffb020; }
+            33% { color: #ffee55; }
+            50% { color: #4dff9a; }
+            67% { color: #3fd3ff; }
+            83% { color: #b36bff; }
+            100% { color: #ff4d6d; }
+        }
+
+        @keyframes wave {
+
+            0%,
+            100% {
+                transform: translateY(-5%) scale(1);
+            }
+
+            50% {
+                transform: translateY(5%) scale(1.06);
+            }
+        }
+
+        @keyframes twinkle {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: rotate(0) scale(1);
+            }
+
+            50% {
+                opacity: 0.6;
+                transform: rotate(180deg) scale(0.7);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            #flow-screen,
+            .beams,
+            .ch,
+            .ch.star {
+                animation: none;
+            }
+
+            .track {
+                animation-duration: calc(var(--dur) * 2);
             }
         }
 
@@ -199,8 +303,9 @@
             padding: 8px 14px;
             border: 1px solid var(--line);
             border-radius: 999px;
-            background: rgba(20, 17, 42, 0.7);
+            background: rgba(7, 5, 26, 0.6);
             color: var(--sub);
+            z-index: 2;
             font-size: 13px;
             cursor: pointer;
         }
@@ -283,9 +388,6 @@
         const flowScreen = document.getElementById('flow-screen');
         const back = document.getElementById('back');
 
-        const COLORS = ['#ffcc33', '#7ee8fa', '#ff8fb1', '#b7f08a', '#c9a7ff'];
-        const SPEED = 140; // 초당 이동 px
-
         // Enter 키로 다음 칸 이동
         inputs.forEach((input, i) => {
             input.addEventListener('keydown', e => {
@@ -312,36 +414,180 @@
         });
 
         back.addEventListener('click', () => {
-            flowScreen.querySelectorAll('.lane').forEach(l => l.remove());
+            stopFlow();
             flowScreen.classList.remove('active');
             inputScreen.classList.add('active');
         });
 
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let current = [];
+        let stopFx = null;
+
+        function stopFlow() {
+            if (stopFx) stopFx();
+            stopFx = null;
+            flowScreen.querySelectorAll('.track').forEach(t => t.remove());
+        }
+
+        function makeChar(text, className, index) {
+            const span = document.createElement('span');
+            span.className = className;
+            span.textContent = text;
+            span.style.setProperty('--d', `${-index * 0.12}s`);
+            return span;
+        }
+
         function showFlow(messages) {
-            flowScreen.querySelectorAll('.lane').forEach(l => l.remove());
+            current = messages;
+            stopFlow();
             inputScreen.classList.remove('active');
             flowScreen.classList.add('active');
 
-            const width = flowScreen.clientWidth;
-            messages.forEach((text, i) => {
-                const lane = document.createElement('div');
-                lane.className = 'lane';
-                const msg = document.createElement('div');
-                msg.className = 'msg';
-                msg.textContent = text;
-                msg.style.color = COLORS[i];
-                lane.appendChild(msg);
-                flowScreen.insertBefore(lane, back);
-
-                // 화면 오른쪽 밖 → 왼쪽 밖으로 이동, 줄마다 속도와 시작 시점을 다르게
-                const distance = width + msg.offsetWidth;
-                const speed = SPEED * (0.8 + (i % 3) * 0.2);
-                const duration = distance / speed;
-                msg.style.setProperty('--from', `${width}px`);
-                msg.style.setProperty('--to', `${-msg.offsetWidth}px`);
-                msg.style.animationDuration = `${duration}s`;
-                msg.style.animationDelay = `${-duration * ((i * 0.37) % 1)}s`;
+            // 메시지를 ✦로 이어 한 줄로 만든다. 글자마다 색·물결 시점을 어긋나게 준다
+            const unit = document.createElement('div');
+            unit.className = 'unit';
+            let index = 0;
+            messages.forEach(text => {
+                [...text].forEach(c => {
+                    unit.appendChild(c === ' ' ? makeChar(' ', 'ch sp', index) : makeChar(c, 'ch', index));
+                    index++;
+                });
+                unit.appendChild(makeChar('✦', 'ch star', index++));
             });
+
+            const track = document.createElement('div');
+            track.className = 'track';
+            track.appendChild(unit);
+            flowScreen.insertBefore(track, back);
+
+            // 한 묶음이 화면보다 짧으면 반복해서 채운 뒤, 전체를 한 번 더 복제해 끊김 없이 이어지게 한다
+            const width = flowScreen.clientWidth;
+            while (track.scrollWidth < width) track.appendChild(unit.cloneNode(true));
+            [...track.children].forEach(c => track.appendChild(c.cloneNode(true)));
+
+            const speed = flowScreen.clientHeight * 1.1; // 초당 이동 px (화면 높이 기준)
+            track.style.setProperty('--dur', `${track.scrollWidth / 2 / speed}s`);
+
+            stopFx = startFx();
+        }
+
+        // 배경 효과: 빛줄기, 반짝이는 별, 불꽃, 색종이, 터치 불꽃
+        function startFx() {
+            const beams = document.createElement('div');
+            beams.className = 'beams';
+            const canvas = document.createElement('canvas');
+            canvas.id = 'fx';
+            flowScreen.prepend(beams, canvas);
+
+            const ctx = canvas.getContext('2d');
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            const stars = Array.from({ length: 90 }, () => ({
+                x: Math.random() * w,
+                y: Math.random() * h,
+                r: Math.random() * 1.6 + 0.4,
+                phase: Math.random() * Math.PI * 2
+            }));
+            const parts = [];
+
+            function burst(x, y, count) {
+                const hue = Math.random() * 360;
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1.5 + Math.random() * 5;
+                    parts.push({
+                        type: 'spark', x, y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 1,
+                        decay: 0.012 + Math.random() * 0.015,
+                        size: 1.5 + Math.random() * 2.5,
+                        color: `hsl(${hue + Math.random() * 50}, 100%, 65%)`
+                    });
+                }
+            }
+
+            function confetti() {
+                parts.push({
+                    type: 'confetti',
+                    x: Math.random() * w, y: -10,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: 1.5 + Math.random() * 2,
+                    rot: Math.random() * Math.PI * 2,
+                    vr: (Math.random() - 0.5) * 0.3,
+                    life: 1,
+                    decay: 0.003,
+                    size: 5 + Math.random() * 6,
+                    color: `hsl(${Math.random() * 360}, 90%, 60%)`
+                });
+            }
+
+            let raf;
+            let lastBurst = 0;
+            function frame(now) {
+                raf = requestAnimationFrame(frame);
+                ctx.clearRect(0, 0, w, h);
+
+                stars.forEach(s => {
+                    ctx.globalAlpha = reduceMotion ? 0.7 : 0.4 + 0.6 * Math.abs(Math.sin(now / 600 + s.phase));
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                if (!reduceMotion) {
+                    if (now - lastBurst > 700) {
+                        lastBurst = now;
+                        burst(Math.random() * w, h * (0.1 + Math.random() * 0.8), 60);
+                    }
+                    if (Math.random() < 0.5) confetti();
+                }
+
+                for (let i = parts.length - 1; i >= 0; i--) {
+                    const p = parts[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= p.decay;
+                    if (p.life <= 0 || p.y > h + 20) {
+                        parts.splice(i, 1);
+                        continue;
+                    }
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    if (p.type === 'spark') {
+                        p.vx *= 0.98;
+                        p.vy = p.vy * 0.98 + 0.05;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        p.rot += p.vr;
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate(p.rot);
+                        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+                        ctx.restore();
+                    }
+                }
+                ctx.globalAlpha = 1;
+            }
+            raf = requestAnimationFrame(frame);
+
+            const onTap = e => burst(e.clientX, e.clientY, 90);
+            flowScreen.addEventListener('pointerdown', onTap);
+
+            return () => {
+                cancelAnimationFrame(raf);
+                flowScreen.removeEventListener('pointerdown', onTap);
+                canvas.remove();
+                beams.remove();
+            };
         }
 
         // 화면 크기가 바뀌면(회전 등) 흐름 다시 계산
@@ -349,9 +595,7 @@
         window.addEventListener('resize', () => {
             if (!flowScreen.classList.contains('active')) return;
             clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(() => {
-                showFlow([...flowScreen.querySelectorAll('.msg')].map(m => m.textContent));
-            }, 200);
+            resizeTimer = setTimeout(() => showFlow(current), 200);
         });
     </script>
 </body>
