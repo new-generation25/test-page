@@ -258,7 +258,7 @@
     <section id="input-screen" class="screen active">
         <div class="head">
             <h1>응원 메시지 보내기</h1>
-            <p>5개를 모두 적고 보내기를 눌러 주세요</p>
+            <p>최대 5개까지 적고 보내기를 눌러 주세요</p>
         </div>
         <form id="form" novalidate autocomplete="off">
             <label class="field"><input type="text" maxlength="30" placeholder="첫 번째 응원 메시지"><span>1</span></label>
@@ -299,12 +299,11 @@
 
         form.addEventListener('submit', e => {
             e.preventDefault();
-            const messages = inputs.map(input => input.value.trim());
-            const emptyIndex = messages.findIndex(m => !m);
-            inputs.forEach((input, i) => input.classList.toggle('empty', !messages[i]));
-            if (emptyIndex !== -1) {
-                error.textContent = `${emptyIndex + 1}번 칸이 비어 있습니다. 5개를 모두 입력해 주세요.`;
-                inputs[emptyIndex].focus();
+            const messages = inputs.map(input => input.value.trim()).filter(Boolean);
+            if (messages.length === 0) {
+                inputs[0].classList.add('empty');
+                error.textContent = '응원 메시지를 1개 이상 입력해 주세요.';
+                inputs[0].focus();
                 return;
             }
             error.textContent = '';
